@@ -19,6 +19,7 @@
   "homepage": "https://github.com/mxmitch/tinyapp#readme",
   "dependencies": {
     "ejs": "^3.0.1",
+    "ejs-lint": "^0.3.0",
     "express": "^4.17.1"
   }
 }

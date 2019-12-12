@@ -1,6 +1,7 @@
 //REQUIRE
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const bcrypt = require('bcrypt');
 const app = express();
 app.use(cookieParser());
 const PORT = 8080; //default port 8080
@@ -26,12 +27,12 @@ const users = {
   "aJ48lW": {
     id: "aJ48lW",
     email: "user@example.com",
-    password: "1234"
+    password: bcrypt.hashSync("1234", 10)
   },
   "il63Aa": {
     id: "il63Aa",
     email: "user2@example.com",
-    password: "dishwasher-funk"
+    password: bcrypt.hashSync("dishwasher-funk", 10)
   }
 };
 
@@ -46,9 +47,9 @@ const generateRandomString = function() {
 };
 
 const emailExists = function(email) {
-  for (const item in users) {
-    if (users[item]['email'] === email) {
-      return users[item];
+  for (const user in users) {
+    if (users[user]['email'] === email) {
+      return users[user];
     }
   }
   return false;
@@ -58,11 +59,20 @@ const urlsForUser = function(id) {
   let newObject = {};
   for (const item in urlDatabase) {
     if (urlDatabase[item].userID === id) {
-      console.log(urlDatabase[item]);
       newObject[item] = urlDatabase[item];
     }
   }
   return newObject;
+};
+
+const findIdByEmail = function(email) {
+  let findID = "";
+  for (const user in users) {
+    if (users[user]['email'] === email) {
+      findID = users[user]['id'];
+    }
+  }
+  return findID;
 };
 
 //SERVER
@@ -90,8 +100,6 @@ app.get("/urls", (req, res) => {
     urls: newDatabase,
     user: users[currentUserID]
   };
-  console.log("this is the user", users[currentUserID]);
-
   res.render("urls_index", templateVars);
 });
 
@@ -168,7 +176,6 @@ app.get("/login", (req, res) => {
   let templateVars = {
     user: users[currentUserID]
   };
-  // console.log("this is user",users[req.cookies['user_id']]);
   res.render("urls_login", templateVars);
 });
 
@@ -176,12 +183,11 @@ app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const user = emailExists(email);
-  // console.log(user);
-
+  const userFromEmail = findIdByEmail(email);
   if (!user) {
     res.status(403).send('No registration for this email');
   }
-  if (password === user.password) {
+  if (bcrypt.compareSync(password, users[userFromEmail]['password'])) {
     res.cookie("user_id", user['id']);
     res.redirect("/urls");
   } else {
@@ -202,6 +208,7 @@ app.post("/register", (req, res) => {
   const id = generateRandomString();
   const email = req.body.email;
   const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(password, 10);
   const newUser = id;
 
   if (email === "" || password === "") {
@@ -212,7 +219,7 @@ app.post("/register", (req, res) => {
     users[newUser] = {};
     users[newUser]['id'] = id;
     users[newUser]['email'] = email;
-    users[newUser]['password'] = password;
+    users[newUser]['password'] = hashedPassword;
   }
   res
     .cookie("user_id", id)

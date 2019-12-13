@@ -8,8 +8,6 @@ const emailExists = require('./helpers.js');
 const generateRandomString = require('./helpers.js');
 const urlsForUser = require('./helpers.js');
 
-// const { findIdByEmail, emailExists, generateRandomString, urlsForUser } = require('./helpers.js');
-
 //SETUP
 const PORT = 8080; //default port 8080
 const app = express();
@@ -56,6 +54,19 @@ const users = {
 
 
 //SERVER
+app.listen(PORT, () => {
+  console.log(`Example app listening on port ${PORT}!`);
+});
+
+app.get("/urls.json", (req, res) => {
+  res.json(urlDatabase);
+});
+
+app.get("/hello", (req, res) => {
+  res.send("<html><body>Hello<b>World</b></body></html>\n");
+});
+
+//GET /
 app.get("/", (req, res) => {
   const currentUserID = req.session.user_id;
   const newDatabase = urlsForUser.urlsForUser(currentUserID, urlDatabase);
@@ -70,19 +81,7 @@ app.get("/", (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello<b>World</b></body></html>\n");
-});
-
-//URLS_INDEX PAGE
+//GET /urls
 app.get("/urls", (req, res) => {
   const currentUserID = req.session.user_id;
   const newDatabase = urlsForUser.urlsForUser(currentUserID, urlDatabase);
@@ -93,15 +92,7 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-app.post("/urls", (req, res) => {
-  const shortURL = generateRandomString.generateRandomString();
-  urlDatabase[shortURL] = {}; //store new URLs in urlDatabase
-  urlDatabase[shortURL]['longURL'] = req.body['longURL'];
-  urlDatabase[shortURL]['userID'] = req.session.user_id;
-  res.redirect(`/urls/${shortURL}`);
-});
-
-//URLS_NEW
+//GET /urls/new
 app.get("/urls/new", (req, res) => {
   const currentUserID = req.session.user_id;
   let templateVars = {
@@ -114,7 +105,7 @@ app.get("/urls/new", (req, res) => {
   }
 });
 
-//URLS_SHOW
+//GET /urls/:shortURL
 app.get("/urls/:shortURL", (req, res) => {
   const currentUserID = req.session.user_id;
   const shortURL = req.params.shortURL;
@@ -131,6 +122,7 @@ app.get("/urls/:shortURL", (req, res) => {
   }
 });
 
+//GET /u/:shortURL
 app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL].longURL;
   if (req.session.user_id) {
@@ -160,21 +152,33 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
+
+//POST /urls
+app.post("/urls", (req, res) => {
+  const shortURL = generateRandomString.generateRandomString();
+  urlDatabase[shortURL] = {}; //store new URLs in urlDatabase
+  urlDatabase[shortURL]['longURL'] = req.body['longURL'];
+  urlDatabase[shortURL]['userID'] = req.session.user_id;
+  res.redirect(`/urls/${shortURL}`);
+});
+
+//POST /urls/:id ------edit button
 app.post("/urls/:id", (req, res) => {
   const shortURL = req.params.id;
+  console.log(req.params.id);
   let templateVars = {
     shortURL,
-    longURL: urlDatabase[shortURL].longURL,
+    longURL: urlDatabase[shortURL]['longURL'],
     user: users[req.session.user_id]
   };
-  if (req.session.user_id) {
+  if (req.session.user_id === urlDatabase[shortURL]['userID']) {
     res.render(`urls_show`, templateVars);
   } else {
-    res.redirect("/urls");
+    res.send("Please login or register");
   }
 });
 
-//URLS_LOGIN
+//GET /login
 app.get("/login", (req, res) => {
   const currentUserID = req.session.user_id;
   let templateVars = {
@@ -183,6 +187,20 @@ app.get("/login", (req, res) => {
   res.render("urls_login", templateVars);
 });
 
+//GET /register
+app.get("/register", (req, res) => {
+  const currentUserID = req.session.user_id;
+  let templateVars = {
+    user: users[currentUserID]
+  };
+  if (!req.session.user_id) {
+    res.render("urls_register", templateVars);
+  } else {
+    res.redirect("/urls");
+  }
+});
+
+//POST /login
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
@@ -200,19 +218,7 @@ app.post("/login", (req, res) => {
   }
 });
 
-//URL_REGISTER
-app.get("/register", (req, res) => {
-  const currentUserID = req.session.user_id;
-  let templateVars = {
-    user: users[currentUserID]
-  };
-  if (!req.session.user_id) {
-    res.render("urls_register", templateVars);
-  } else {
-    res.redirect("/urls");
-  }
-});
-
+//POST /register
 app.post("/register", (req, res) => {
   const id = generateRandomString.generateRandomString();
   const email = req.body.email;
@@ -235,7 +241,7 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
-//LOGOUT
+//POST /logout
 app.post("/logout", (req, res) => {
   req.session = null;
   res.redirect("/urls");

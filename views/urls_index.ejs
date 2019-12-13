@@ -31,7 +31,7 @@
         <tbody>
           <% for(let url in urls) { %>
           <tr>
-            <td><a href="<%= urls[url].longURL %>"><%= url %></a></td>
+            <td><%= url %></td>
             <td><%= urls[url].longURL %></td>
             <td>
               <form method="POST" action="/urls/<%= url %>"><button type="submit"

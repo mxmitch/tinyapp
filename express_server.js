@@ -129,8 +129,12 @@ app.get("/urls/:shortURL", (req, res) => {
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL].longURL;
+  let longURL = urlDatabase[req.params.shortURL].longURL;
   if (req.session.user_id) {
+    const prefix = 'http://';
+    if (longURL.substr(0, prefix.length) !== prefix) {
+      longURL = prefix + longURL;
+    }
     res.redirect(longURL);
   } else {
     res.redirect("/urls");

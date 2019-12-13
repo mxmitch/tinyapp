@@ -52,8 +52,7 @@ const users = {
   }
 };
 
-
-//SERVER
+//-----------------REQUEST/RESPONSE--------------------//
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
@@ -66,7 +65,6 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello<b>World</b></body></html>\n");
 });
 
-//GET /
 app.get("/", (req, res) => {
   const currentUserID = req.session.user_id;
   const newDatabase = urlsForUser.urlsForUser(currentUserID, urlDatabase);
@@ -81,7 +79,7 @@ app.get("/", (req, res) => {
   }
 });
 
-//GET /urls
+//URLS_INDEX PAGE
 app.get("/urls", (req, res) => {
   const currentUserID = req.session.user_id;
   const newDatabase = urlsForUser.urlsForUser(currentUserID, urlDatabase);
@@ -92,7 +90,15 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-//GET /urls/new
+app.post("/urls", (req, res) => {
+  const shortURL = generateRandomString.generateRandomString();
+  urlDatabase[shortURL] = {}; //store new URLs in urlDatabase
+  urlDatabase[shortURL]['longURL'] = req.body['longURL'];
+  urlDatabase[shortURL]['userID'] = req.session.user_id;
+  res.redirect(`/urls/${shortURL}`);
+});
+
+//URLS_NEW
 app.get("/urls/new", (req, res) => {
   const currentUserID = req.session.user_id;
   let templateVars = {
@@ -105,7 +111,7 @@ app.get("/urls/new", (req, res) => {
   }
 });
 
-//GET /urls/:shortURL
+//URLS_SHOW
 app.get("/urls/:shortURL", (req, res) => {
   const currentUserID = req.session.user_id;
   const shortURL = req.params.shortURL;
@@ -122,7 +128,6 @@ app.get("/urls/:shortURL", (req, res) => {
   }
 });
 
-//GET /u/:shortURL
 app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL].longURL;
   if (req.session.user_id) {
@@ -152,33 +157,17 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-
-//POST /urls
-app.post("/urls", (req, res) => {
-  const shortURL = generateRandomString.generateRandomString();
-  urlDatabase[shortURL] = {}; //store new URLs in urlDatabase
-  urlDatabase[shortURL]['longURL'] = req.body['longURL'];
-  urlDatabase[shortURL]['userID'] = req.session.user_id;
-  res.redirect(`/urls/${shortURL}`);
-});
-
-//POST /urls/:id ------edit button
 app.post("/urls/:id", (req, res) => {
   const shortURL = req.params.id;
-  console.log(req.params.id);
   let templateVars = {
     shortURL,
     longURL: urlDatabase[shortURL]['longURL'],
     user: users[req.session.user_id]
   };
-  if (req.session.user_id === urlDatabase[shortURL]['userID']) {
-    res.render(`urls_show`, templateVars);
-  } else {
-    res.send("Please login or register");
-  }
+  res.render(`urls_show`, templateVars);
 });
 
-//GET /login
+//URLS_LOGIN
 app.get("/login", (req, res) => {
   const currentUserID = req.session.user_id;
   let templateVars = {
@@ -187,7 +176,27 @@ app.get("/login", (req, res) => {
   res.render("urls_login", templateVars);
 });
 
-//GET /register
+app.post("/login", (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+  const user = emailExists.emailExists(email, users);
+  const userFromEmail = findIdByEmail.findIdByEmail(email, users);
+  if (user === undefined) {
+    res.status(403).send('No registration for this email');
+  }
+  if (userFromEmail === undefined) {
+    res.status(403).send('Invalid email');
+  }
+  if (bcrypt.compareSync(password, users[userFromEmail]['password'])) {
+    // eslint-disable-next-line camelcase
+    req.session.user_id = user['id'];
+    res.redirect("/urls");
+  } else {
+    res.status(403).send('Invalid password');
+  }
+});
+
+//URLS_REGISTER
 app.get("/register", (req, res) => {
   const currentUserID = req.session.user_id;
   let templateVars = {
@@ -200,25 +209,6 @@ app.get("/register", (req, res) => {
   }
 });
 
-//POST /login
-app.post("/login", (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
-  const user = emailExists.emailExists(email, users);
-  const userFromEmail = findIdByEmail.findIdByEmail(email, users);
-  if (user === undefined) {
-    res.status(403).send('No registration for this email');
-  }
-  if (bcrypt.compareSync(password, users[userFromEmail]['password'])) {
-    // eslint-disable-next-line camelcase
-    req.session.user_id = user['id'];
-    res.redirect("/urls");
-  } else {
-    res.status(403).send('Invalid password');
-  }
-});
-
-//POST /register
 app.post("/register", (req, res) => {
   const id = generateRandomString.generateRandomString();
   const email = req.body.email;
@@ -241,7 +231,7 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
-//POST /logout
+//LOGOUT
 app.post("/logout", (req, res) => {
   req.session = null;
   res.redirect("/urls");
